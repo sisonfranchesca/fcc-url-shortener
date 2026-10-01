@@ -8,7 +8,7 @@ const port = process.env.PORT || 3000;
 
 app.use(cors());
 
-// Body parsing middleware (Crucial for freeCodeCamp POST tests)
+// Body parsing middleware (Sobrang mahalaga para sa POST requests)
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
@@ -18,38 +18,31 @@ app.get('/', (req, res) => {
   res.sendFile(process.cwd() + '/views/index.html');
 });
 
-// Storage mapping
+// Simple in-memory storage
 const urlDatabase = {};
 let idCounter = 1;
 
 app.post('/api/shorturl', (req, res) => {
   const originalUrl = req.body.url;
 
-  // 1. Validate http/https structure using standard Regex
-  const urlRegex = /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/;
-  if (!originalUrl || !urlRegex.test(originalUrl)) {
-    return res.json({ error: 'invalid url' });
-  }
-
-  // 2. Parse domain hostname for dns.lookup
-  let hostname;
+  // 1. I-check kung valid http:// o https:// ang format
+  let parsedUrl;
   try {
-    const parsedUrl = new URL(originalUrl);
+    parsedUrl = new URL(originalUrl);
     if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
       return res.json({ error: 'invalid url' });
     }
-    hostname = parsedUrl.hostname;
   } catch (err) {
     return res.json({ error: 'invalid url' });
   }
 
-  // 3. DNS Lookup Check
-  dns.lookup(hostname, (err) => {
+  // 2. DNS check gamit ang hostname lang
+  dns.lookup(parsedUrl.hostname, (err) => {
     if (err) {
       return res.json({ error: 'invalid url' });
     }
 
-    // Check if URL is already saved
+    // Kung gawa na dati, ibalik ang existing short_url
     for (const [short, url] of Object.entries(urlDatabase)) {
       if (url === originalUrl) {
         return res.json({
@@ -59,7 +52,7 @@ app.post('/api/shorturl', (req, res) => {
       }
     }
 
-    // Store new mapping
+    // Magtabi ng bago
     const shortUrl = idCounter++;
     urlDatabase[shortUrl] = originalUrl;
 
